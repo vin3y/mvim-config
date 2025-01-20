@@ -28,5 +28,5 @@ require('lazy').setup {
   require 'plugins.indent-blankline',
   require 'plugins.lazygit',
   require 'plugins.database',
-  require 'plugins.avante',
+  require 'plugins.vim-tmux-navigator',
 }

@@ -1,16 +1,14 @@
--- Format on save and linters
 return {
   'nvimtools/none-ls.nvim',
   dependencies = {
     'nvimtools/none-ls-extras.nvim',
-    'jayp0521/mason-null-ls.nvim', -- ensure dependencies are installed
+    'jayp0521/mason-null-ls.nvim',
   },
   config = function()
     local null_ls = require 'null-ls'
-    local formatting = null_ls.builtins.formatting   -- to setup formatters
-    local diagnostics = null_ls.builtins.diagnostics -- to setup linters
+    local formatting = null_ls.builtins.formatting
+    local diagnostics = null_ls.builtins.diagnostics
 
-    -- list of formatters & linters for mason to install
     require('mason-null-ls').setup {
       ensure_installed = {
         'checkmake',
@@ -20,13 +18,39 @@ return {
         'shfmt',
         'ruff',
       },
-      -- auto-install configured formatters & linters (with null-ls)
       automatic_installation = true,
     }
 
     local sources = {
       diagnostics.checkmake,
-      formatting.prettier.with { filetypes = { 'html', 'json', 'yaml', 'markdown' } },
+      -- Configure prettier for JS/TS/JSX
+      formatting.prettier.with {
+        filetypes = {
+          'javascript',
+          'typescript',
+          'javascriptreact',
+          'typescriptreact',
+          'html',
+          'json',
+          'yaml',
+          'markdown',
+        },
+        extra_args = {
+          '--single-quote',
+          '--jsx-single-quote',
+          '--trailing-comma', 'es5',
+          '--arrow-parens', 'avoid',
+        },
+      },
+      -- Add ESLint diagnostics using none-ls-extras
+      require('none-ls.diagnostics.eslint_d').with {
+        filetypes = {
+          'javascript',
+          'typescript',
+          'javascriptreact',
+          'typescriptreact',
+        },
+      },
       formatting.stylua,
       formatting.shfmt.with { args = { '-i', '4' } },
       formatting.terraform_fmt,
@@ -36,9 +60,8 @@ return {
 
     local augroup = vim.api.nvim_create_augroup('LspFormatting', {})
     null_ls.setup {
-      -- debug = true, -- Enable debug mode. Inspect logs with :NullLsLog.
+      -- debug = true,
       sources = sources,
-      -- you can reuse a shared lspconfig on_attach callback here
       on_attach = function(client, bufnr)
         if client.supports_method 'textDocument/formatting' then
           vim.api.nvim_clear_autocmds { group = augroup, buffer = bufnr }
@@ -46,7 +69,15 @@ return {
             group = augroup,
             buffer = bufnr,
             callback = function()
-              vim.lsp.buf.format { async = false }
+              -- Format on save
+              vim.lsp.buf.format {
+                async = false,
+                timeout_ms = 5000, -- Increase timeout for larger files
+                filter = function(formatting_client)
+                  -- Use prettier for JS/TS/JSX files
+                  return formatting_client.name == "null-ls"
+                end,
+              }
             end,
           })
         end
